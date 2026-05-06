@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recamán's Sequence</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #000;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'IM Fell English', serif;
+  }
+  .page {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ── Title ── */
+  .title-bar {
+    padding: 20px 0 14px;
+    text-align: center;
+    border-bottom: 1.5px solid #222;
+    flex-shrink: 0;
+  }
+  .title-bar h1 {
+    font-size: clamp(1.4rem, 5.5vw, 1.9rem);
+    color: #4ecfb0;
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* ── Canvas ── */
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    min-height: 260px;
+  }
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* ── Playback controls ── */
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    flex-shrink: 0;
+  }
+  button {
+    background: transparent;
+    border: 1px solid #333;
+    color: #4ecfb0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 13px;
+    cursor: pointer;
+    letter-spacing: 0.07em;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+  button:hover { border-color: #4ecfb0; }
+  button.active { border-color: #4ecfb0; color: #fff; }
+  .step-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: #555;
+    min-width: 52px;
+    text-align: center;
+  }
+
+  /* ── Formula section ── */
+  .formula-section {
+    border-top: 1.5px solid #222;
+    padding: 14px 18px 20px;
+    flex-shrink: 0;
+  }
+
+  /* Display row: a_n = { ... } */
+  .formula-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .formula-lhs {
+    font-size: clamp(0.85rem, 2.8vw, 1.05rem);
+    white-space: nowrap;
+    color: #ddd;
+  }
+  .brace {
+    font-size: clamp(2rem, 7.5vw, 2.6rem);
+    color: #666;
+    line-height: 1;
+    font-weight: 100;
+    flex-shrink: 0;
+  }
+  .formula-cases {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+  }
+  .formula-cases .row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 10px;
+    font-size: clamp(0.7rem, 2.1vw, 0.85rem);
+    line-height: 1.8;
+  }
+  .expr { color: #ddd; white-space: nowrap; }
+  .cond { color: #666; font-style: italic; font-family: 'JetBrains Mono', monospace; font-size: 0.8em; white-space: nowrap; }
+  sub { font-size: 0.66em; }
+
+  /* ── Input rows ── */
+  .input-section {
+    border-top: 1px solid #1a1a1a;
+    padding-top: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-section .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.64rem;
+    color: #444;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* Each input row: label = [ input ] condition */
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(0.7rem, 2.1vw, 0.84rem);
+    color: #bbb;
+  }
+  .input-row .ilabel {
+    white-space: nowrap;
+    color: #999;
+    font-style: italic;
+    min-width: 5.5em;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .input-row .ieq {
+    color: #555;
+    flex-shrink: 0;
+  }
+  .input-row input[type="text"] {
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    color: #e0e0e0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    padding: 4px 9px;
+    width: 100%;
+    min-width: 0;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.2s;
+  }
+  .input-row input[type="text"]:focus { border-color: #4ecfb0; }
+  .input-row input[type="text"].error { border-color: #c0392b; color: #e74c3c; }
+  .input-row .icond {
+    color: #444;
+    font-style: italic;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .input-row input[type="number"] {
+    background: #0d0d0d;
+    border: 1px solid #2a2a2a;
+    color: #e0e0e0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    padding: 4px 7px;
+    width: 62px;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .input-row input[type="number"]:focus { border-color: #4ecfb0; }
+
+  .apply-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .apply-btn {
+    border-color: #4ecfb0 !important;
+    color: #4ecfb0;
+    padding: 5px 18px;
+    font-size: 0.72rem;
+  }
+  .apply-btn:hover { background: rgba(78,207,176,0.08); }
+  .err-msg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    color: #c0392b;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: #333;
+    line-height: 1.6;
+    padding-top: 6px;
+    border-top: 1px solid #141414;
+    margin-top: 4px;
+  }
+  .hint span { color: #4a4a4a; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="title-bar"><h1 id="seqTitle">Recamán's sequence</h1></div>
+
+  <div class="canvas-wrap"><canvas id="c"></canvas></div>
+
+  <div class="controls">
+    <button id="btnPause">⏸ pause</button>
+    <span class="step-lbl" id="stepLbl">n = 0</span>
+    <button id="btnSpeed">speed ×1</button>
+  </div>
+
+  <!-- Formula display + input -->
+  <div class="formula-section">
+
+    <!-- Live rendered formula -->
+    <div class="formula-display">
+      <div class="formula-lhs">a<sub>n</sub> =</div>
+      <div class="brace">{</div>
+      <div class="formula-cases" id="formulaCases">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- Editable inputs -->
+    <div class="input-section">
+      <div class="section-label">define sequence</div>
+
+      <!-- a(0) = initial value -->
+      <div class="input-row">
+        <span class="ilabel">a<sub>0</sub></span>
+        <span class="ieq">=</span>
+        <input type="number" id="inpA0" value="0" min="0">
+        <span class="icond">initial value</span>
+      </div>
+
+      <!-- back expr  (used if condition holds) -->
+      <div class="input-row">
+        <span class="ilabel">back</span>
+        <span class="ieq">=</span>
+        <input type="text" id="inpBack" value="a[n-1] - n" spellcheck="false">
+        <span class="icond">if back &gt; 0 &amp; unused</span>
+      </div>
+
+      <!-- forward expr (fallback) -->
+      <div class="input-row">
+        <span class="ilabel">forward</span>
+        <span class="ieq">=</span>
+        <input type="text" id="inpFwd" value="a[n-1] + n" spellcheck="false">
+        <span class="icond">otherwise</span>
+      </div>
+
+      <!-- N terms -->
+      <div class="input-row">
+        <span class="ilabel">terms</span>
+        <span class="ieq">=</span>
+        <input type="number" id="inpN" value="55" min="5" max="500">
+        <span class="icond">n = 1 … N</span>
+      </div>
+
+      <div class="apply-row">
+        <button class="apply-btn" id="btnApply">▶ apply</button>
+        <span class="err-msg" id="errMsg"></span>
+      </div>
+
+      <div class="hint">
+        use: <span>a[n-1]</span>, <span>n</span>, <span>Math.sin</span>, <span>Math.floor</span>, <span>Math.abs</span>, …<br>
+        examples: <span>a[n-1]*2 - n</span> · <span>a[n-1] + n*n</span> · <span>a[n-1] - 2*n</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var canvas     = document.getElementById('c');
+  var ctx        = canvas.getContext('2d');
+  var stepLbl    = document.getElementById('stepLbl');
+  var speedBtn   = document.getElementById('btnSpeed');
+  var pauseBtn   = document.getElementById('btnPause');
+  var applyBtn   = document.getElementById('btnApply');
+  var inpA0      = document.getElementById('inpA0');
+  var inpBack    = document.getElementById('inpBack');
+  var inpFwd     = document.getElementById('inpFwd');
+  var inpN       = document.getElementById('inpN');
+  var errMsg     = document.getElementById('errMsg');
+  var casesEl    = document.getElementById('formulaCases');
+  var titleEl    = document.getElementById('seqTitle');
+
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  // ── Sequence builder ──────────────────────────────────
+  // backExpr / fwdExpr are user strings evaluated as JS.
+  // Available vars: a (array so far), n (current index).
+  function buildSeq(a0, backExpr, fwdExpr, N) {
+    // Validate expressions first with n=1, a=[a0]
+    var testA = [a0];
+    try { evalExpr(backExpr, testA, 1); } catch(e) { throw new Error('back: ' + e.message); }
+    try { evalExpr(fwdExpr,  testA, 1); } catch(e) { throw new Error('forward: ' + e.message); }
+
+    var a    = [a0];
+    var used = new Set([a0]);
+    for (var i = 1; i <= N; i++) {
+      var back, fwd, chosen;
+      try { back = evalExpr(backExpr, a, i); } catch(e) { throw new Error('back at n='+i+': '+e.message); }
+      try { fwd  = evalExpr(fwdExpr,  a, i); } catch(e) { throw new Error('fwd at n='+i+': '+e.message); }
+
+      if (typeof back !== 'number' || !isFinite(back)) back = NaN;
+      if (typeof fwd  !== 'number' || !isFinite(fwd))  fwd  = NaN;
+
+      if (!isNaN(back) && back > 0 && !used.has(Math.round(back))) {
+        chosen = Math.round(back);
+      } else if (!isNaN(fwd)) {
+        chosen = Math.round(fwd);
+      } else {
+        throw new Error('both expressions returned invalid value at n=' + i);
+      }
+      a.push(chosen);
+      used.add(chosen);
+    }
+    return a;
+  }
+
+  // Safe expression evaluator — only allows math-safe tokens
+  function evalExpr(expr, a, n) {
+    // whitelist check: only digits, operators, spaces, brackets, letters (for Math.xxx, a, n)
+    if (/[`"';{}]/.test(expr)) throw new Error('invalid characters');
+    /* jshint evil: true */
+    var fn = new Function('a', 'n', 'Math',
+      '"use strict"; return (' + expr + ');'
+    );
+    return fn(a, n, Math);
+  }
+
+  // ── Update the formula display cases ─────────────────
+  function updateFormulaDisplay(a0, backExpr, fwdExpr) {
+    casesEl.innerHTML =
+      '<div class="row">' +
+        '<span class="expr">' + a0 + ',</span>' +
+        '<span class="cond">if n = 0</span>' +
+      '</div>' +
+      '<div class="row">' +
+        '<span class="expr">' + htmlExpr(backExpr) + ',</span>' +
+        '<span class="cond">if back &gt; 0 &amp; unused</span>' +
+      '</div>' +
+      '<div class="row">' +
+        '<span class="expr">' + htmlExpr(fwdExpr) + '.</span>' +
+        '<span class="cond">otherwise</span>' +
+      '</div>';
+  }
+
+  // Turn a[n-1] → a<sub>n−1</sub> etc. for display
+  function htmlExpr(s) {
+    return s
+      .replace(/a\[n-(\d+)\]/g, function(_, d) {
+        return 'a<sub>n\u2212' + d + '</sub>';
+      })
+      .replace(/a\[n\]/g, 'a<sub>n</sub>')
+      .replace(/\*\*/g, '^')
+      .replace(/\*/g, '\u00b7')
+      .replace(/Math\.abs/g, '|·|')
+      .replace(/Math\.floor/g, '\u230a·\u230b')
+      .replace(/Math\.sqrt/g, '\u221a');
+  }
+
+  // ── Active sequence state ─────────────────────────────
+  var seq, ARCS, maxVal;
+
+  function applySeq(a0, backExpr, fwdExpr, N) {
+    seq    = buildSeq(a0, backExpr, fwdExpr, N);
+    ARCS   = seq.length - 1;
+    maxVal = 0;
+    for (var k = 0; k < seq.length; k++) if (seq[k] > maxVal) maxVal = seq[k];
+    if (maxVal === 0) maxVal = 1; // guard
+  }
+
+  // Initial defaults
+  var curA0   = 0;
+  var curBack = 'a[n-1] - n';
+  var curFwd  = 'a[n-1] + n';
+  var curN    = 55;
+
+  applySeq(curA0, curBack, curFwd, curN);
+  updateFormulaDisplay(curA0, curBack, curFwd);
+
+  // ── Offscreen canvas ──────────────────────────────────
+  var off    = document.createElement('canvas');
+  var offCtx = off.getContext('2d');
+
+  // ── Resize ────────────────────────────────────────────
+  function resize() {
+    var wrap = canvas.parentElement;
+    var W = wrap.clientWidth, H = wrap.clientHeight;
+    canvas.width  = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    off.width  = W * DPR; off.height = H * DPR;
+    offCtx.setTransform(DPR,0,0,DPR,0,0);
+    rebuildOffscreen();
+  }
+
+  function cW() { return canvas.width  / DPR; }
+  function cH() { return canvas.height / DPR; }
+  var PAD = 32;
+
+  function valToY(v) {
+    var scale = (cH() - PAD * 2) / maxVal;
+    return cH() - PAD - v * scale;
+  }
+  function midX() { return cW() / 2; }
+
+  // ── Color ─────────────────────────────────────────────
+  var CS = [[255,210,50],[255,150,25],[230,65,45],[205,45,100],[160,25,150]];
+  function getColor(t) {
+    var pos = Math.max(0,Math.min(0.9999,t)) * (CS.length-1);
+    var i=Math.floor(pos), f=pos-i, A=CS[i], B=CS[i+1];
+    return 'rgb('+Math.round(A[0]+f*(B[0]-A[0]))+','+Math.round(A[1]+f*(B[1]-A[1]))+','+Math.round(A[2]+f*(B[2]-A[2]))+')';
+  }
+
+  // ── Arc drawing ───────────────────────────────────────
+  function drawArcOnCtx(c, idx, pEnd, tBase, tRange) {
+    if (pEnd <= 0 || idx >= seq.length-1) return;
+    var y1=valToY(seq[idx]), y2=valToY(seq[idx+1]);
+    var cy=(y1+y2)/2, r=Math.abs(y2-y1)/2, ax=midX();
+    if (r < 0.5) return;
+    var goRight = (idx%2===0);
+    var sa = (y1<=y2) ? -Math.PI/2 : Math.PI/2;
+    var sd = (y1<=y2) ? (goRight?1:-1) : (goRight?-1:1);
+    var STEPS = Math.min(80, Math.max(4, Math.ceil(r*pEnd/4)));
+    var lw = Math.max(1.2, 3.2 - idx*0.03);
+    c.lineCap='round'; c.lineWidth=lw;
+    for (var s=0; s<STEPS; s++) {
+      var pa=(s/STEPS)*pEnd, pb=((s+1)/STEPS)*pEnd;
+      var t=tBase+tRange*(s+0.5)/STEPS;
+      var angA=sa+sd*Math.PI*pa, angB=sa+sd*Math.PI*pb;
+      c.beginPath();
+      c.moveTo(ax+r*Math.cos(angA), cy+r*Math.sin(angA));
+      c.lineTo(ax+r*Math.cos(angB), cy+r*Math.sin(angB));
+      c.strokeStyle=getColor(t); c.shadowColor=getColor(t); c.shadowBlur=8;
+      c.stroke();
+    }
+  }
+
+  function getArcPoint(idx, p) {
+    if (idx >= seq.length-1) return {x:midX(), y:cH()/2};
+    var y1=valToY(seq[idx]), y2=valToY(seq[idx+1]);
+    var cy=(y1+y2)/2, r=Math.abs(y2-y1)/2, ax=midX();
+    if (r<0.5) return {x:ax,y:cy};
+    var goRight=(idx%2===0);
+    var sa=(y1<=y2)?-Math.PI/2:Math.PI/2;
+    var sd=(y1<=y2)?(goRight?1:-1):(goRight?-1:1);
+    var angle=sa+sd*Math.PI*p;
+    return {x:ax+r*Math.cos(angle), y:cy+r*Math.sin(angle)};
+  }
+
+  function drawAxis(c) {
+    c.save();
+    c.strokeStyle='rgba(255,255,255,0.05)';
+    c.lineWidth=1; c.setLineDash([3,9]);
+    c.beginPath(); c.moveTo(midX(),0); c.lineTo(midX(),cH()); c.stroke();
+    c.setLineDash([]); c.restore();
+  }
+
+  var lastCommitted = -1;
+  function rebuildOffscreen() {
+    offCtx.clearRect(0,0,cW(),cH());
+    drawAxis(offCtx);
+    for (var i=0; i<=lastCommitted; i++) drawArcOnCtx(offCtx,i,1,i/ARCS,1/ARCS);
+  }
+  function commitArc(i) {
+    drawArcOnCtx(offCtx,i,1,i/ARCS,1/ARCS);
+    lastCommitted=i;
+  }
+
+  // ── Animation state ───────────────────────────────────
+  var globalT=0, running=true, lastTs=null, prevArc=-1;
+  var speeds=[1,2,4], speedIdx=0, ARC_DUR=480;
+
+  function fullReset() {
+    globalT=0; running=true; lastTs=null; prevArc=-1; lastCommitted=-1;
+    offCtx.clearRect(0,0,cW(),cH());
+    drawAxis(offCtx);
+    pauseBtn.textContent='⏸ pause';
+  }
+
+  // ── Render loop ───────────────────────────────────────
+  function render(ts) {
+    if (!lastTs) lastTs=ts;
+    var dt=Math.min(ts-lastTs,80); lastTs=ts;
+
+    if (running) {
+      globalT += dt/(ARC_DUR/speeds[speedIdx]);
+      if (globalT>=ARCS) { globalT-=ARCS; prevArc=-1; lastCommitted=-1; offCtx.clearRect(0,0,cW(),cH()); drawAxis(offCtx); }
+    }
+
+    var arcIdx  = Math.min(Math.floor(globalT), ARCS-1);
+    var arcFrac = globalT - Math.floor(globalT);
+    if (globalT>=ARCS) arcFrac=1;
+
+    if (arcIdx > prevArc) {
+      for (var j=prevArc+1; j<arcIdx; j++) commitArc(j);
+      prevArc=arcIdx-1;
+    }
+
+    stepLbl.textContent='n = '+Math.round(globalT);
+
+    var W=cW(), H=cH();
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(off,0,0,off.width,off.height,0,0,W,H);
+
+    if (arcIdx<ARCS) {
+      drawArcOnCtx(ctx,arcIdx,arcFrac,arcIdx/ARCS,arcFrac/ARCS);
+      var pt=getArcPoint(arcIdx,arcFrac);
+      var tc=arcIdx/ARCS+arcFrac/ARCS;
+      ctx.save();
+      ctx.shadowColor=getColor(tc); ctx.shadowBlur=22;
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,5,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  // ── Apply button ──────────────────────────────────────
+  applyBtn.addEventListener('click', function () {
+    errMsg.textContent = '';
+    inpBack.classList.remove('error');
+    inpFwd.classList.remove('error');
+
+    var a0  = parseInt(inpA0.value, 10);
+    var bk  = inpBack.value.trim();
+    var fw  = inpFwd.value.trim();
+    var Nv  = parseInt(inpN.value, 10);
+
+    if (isNaN(a0)) { errMsg.textContent = 'a₀ must be a number'; return; }
+    if (!bk)       { errMsg.textContent = 'back expression is empty'; inpBack.classList.add('error'); return; }
+    if (!fw)       { errMsg.textContent = 'forward expression is empty'; inpFwd.classList.add('error'); return; }
+    if (isNaN(Nv) || Nv < 5 || Nv > 500) { errMsg.textContent = 'terms must be 5–500'; return; }
+
+    try {
+      applySeq(a0, bk, fw, Nv);
+    } catch(e) {
+      errMsg.textContent = e.message;
+      if (e.message.indexOf('back') === 0) inpBack.classList.add('error');
+      else inpFwd.classList.add('error');
+      return;
+    }
+
+    curA0=a0; curBack=bk; curFwd=fw; curN=Nv;
+    updateFormulaDisplay(a0, bk, fw);
+
+    // Update title based on expressions
+    if (bk==='a[n-1] - n' && fw==='a[n-1] + n' && a0===0) {
+      titleEl.textContent = "Recamán's sequence";
+    } else {
+      titleEl.textContent = 'Custom sequence';
+    }
+
+    resize();   // re-size resets offscreen with new seq
+    fullReset();
+  });
+
+  // ── Other controls ────────────────────────────────────
+  speedBtn.addEventListener('click', function() {
+    speedIdx=(speedIdx+1)%speeds.length;
+    speedBtn.textContent='speed ×'+speeds[speedIdx];
+  });
+  pauseBtn.addEventListener('click', function() {
+    running=!running;
+    pauseBtn.textContent=running?'⏸ pause':'▶ play';
+    if (running) lastTs=null;
+  });
+
+  resize();
+  window.addEventListener('resize', function() { lastCommitted=-1; prevArc=-1; resize(); });
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
